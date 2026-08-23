@@ -20,7 +20,7 @@ preferred-citation:
     - name: "Saluca Agentic AI Research Team"
       affiliation: Saluca LLC
   year: 2026
-  doi: "10.5281/zenodo.22072388"
+  doi: "10.5281/zenodo.22072387"
   publisher:
     name: Zenodo
-  notes: "DOI reserved; the deposit is pending publication at the time of writing."
+  notes: "Concept DOI, which always resolves to the latest version. Published on Zenodo under CC-BY-4.0."

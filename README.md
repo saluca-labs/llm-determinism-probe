@@ -146,8 +146,12 @@ build, the precision, the batch conditions. Almost nobody keeps them.
 The accompanying note is *Deterministic Function, Non-Reproducible Deployment: A Minimal
 Reproduction of Batch-Dependent Output Variation in a Language Model, and What It Implies for
 Auditability* (Ruvalcaba and the Saluca Agentic AI Research Team, Saluca LLC, 2026), deposited to
-Zenodo under `10.5281/zenodo.22072388`. **That DOI is reserved and the deposit is pending
-publication at the time of writing**, so it may not resolve yet. See `CITATION.cff`.
+Zenodo and published under CC-BY-4.0.
+
+> Ruvalcaba, C. and the Saluca Agentic AI Research Team (2026). *Deterministic Function,
+> Non-Reproducible Deployment.* Saluca LLC. https://doi.org/10.5281/zenodo.22072387
+
+That is the **concept DOI**, which always resolves to the latest version. See `CITATION.cff`.
 
 ## Licence
 
