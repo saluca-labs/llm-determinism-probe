@@ -1,0 +1,14 @@
+Q1  same input, same shape, 5 runs, bitwise identical : True
+Q2  batch of 1+1    identical: False  max|delta|: 3.052e-04  elems differing: 3941/4096
+Q2  batch of 1+7    identical: False  max|delta|: 1.984e-04  elems differing: 3852/4096
+Q2  batch of 1+31   identical: False  max|delta|: 1.984e-04  elems differing: 3852/4096
+Q2  batch of 1+127  identical: False  max|delta|: 1.984e-04  elems differing: 3852/4096
+
+perturbation applied            : 3.052e-04  (the max delta measured above)
+gap between top-1 and top-2     : 4.850e-04
+argmax flipped                  : False
+fraction of vocab within eps of top-1: 1
+
+torch 2.12.0+cpu
+python 3.12.10
+machine AMD64

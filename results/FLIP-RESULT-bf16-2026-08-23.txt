@@ -1,0 +1,28 @@
+model  : Qwen/Qwen2.5-0.5B-Instruct   fp32, cpu, greedy
+prompt : 41 tokens, no padding anywhere (fillers trimmed to the same length)
+
+PHASE A - final-position logits, batch of 1 vs batch of K
+  baseline top1-top2 gap: 3.750e-01   top1 token: 32848
+  batch 2   max|delta|: 0.000e+00   logits differing: 0/151936   argmax flipped: False   vocab within delta of top1: 0
+  batch 8   max|delta|: 0.000e+00   logits differing: 0/151936   argmax flipped: False   vocab within delta of top1: 0
+  batch 32  max|delta|: 0.000e+00   logits differing: 0/151936   argmax flipped: False   vocab within delta of top1: 0
+
+PHASE B - greedy generation of 120 tokens
+  baseline generated, comparing...
+  batch 2   first divergent token: #13   identical text: False
+  batch 8   first divergent token: #13   identical text: False
+  batch 32  first divergent token: #13   identical text: False
+
+--- baseline (batch of 1) ---
+Bridge expansion joints are crucial for ensuring the stability and longevity of bridges over various terrains. Here's an explanation in plain language:  1. **Structural Integrity**: Expansion joints help maintain the structural integrity of the bridge. They allow the bridge to expand or contract slightly with changes in temperature or load distribution.  2. **Load Distribution**: By providing a sl
+
+--- batch of 2, diverges at token #13 ---
+Bridge expansion joints are crucial for ensuring the stability and longevity of bridges. Here's why they need to be expanded:  1. **Structural Integrity**: Expansion joints allow the bridge deck to expand and contract with temperature changes or variations in load. This helps maintain the proper shape and size of the bridge structure.  2. **Load Distribution**: By expanding the bridge deck, it dis
+
+--- batch of 8, diverges at token #13 ---
+Bridge expansion joints are crucial for ensuring the stability and longevity of bridges. Here's why they need to be expanded:  1. **Structural Integrity**: Expansion joints allow the bridge deck to expand and contract with temperature changes or variations in load. This helps maintain the proper shape and size of the bridge structure.  2. **Load Distribution**: By expanding the bridge deck, it dis
+
+--- batch of 32, diverges at token #13 ---
+Bridge expansion joints are crucial for ensuring the stability and longevity of bridges. Here's why they need to be expanded:  1. **Structural Integrity**: Expansion joints allow the bridge deck to expand and contract with temperature changes or variations in load. This helps maintain the proper shape and size of the bridge structure.  2. **Load Distribution**: By expanding the bridge deck, it dis
+
+wrote token_flip_result.json

@@ -1,0 +1,16 @@
+
+=== bfloat16, 120 new tokens, greedy ===
+C1  batch 1   run twice -> identical: True
+C1  batch 8   run twice -> identical: True
+C2  batch 2   vs batch 1 -> first divergence: #13   identical to previous batch size: -
+C2  batch 4   vs batch 1 -> first divergence: #13   identical to previous batch size: True
+C2  batch 8   vs batch 1 -> first divergence: #13   identical to previous batch size: True
+C2  batch 32  vs batch 1 -> first divergence: #13   identical to previous batch size: True
+
+=== float32, 120 new tokens, greedy ===
+C1  batch 1   run twice -> identical: True
+C1  batch 8   run twice -> identical: True
+C2  batch 2   vs batch 1 -> first divergence: none   identical to previous batch size: -
+C2  batch 4   vs batch 1 -> first divergence: none   identical to previous batch size: True
+C2  batch 8   vs batch 1 -> first divergence: none   identical to previous batch size: True
+C2  batch 32  vs batch 1 -> first divergence: none   identical to previous batch size: True
