@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: "llm-determinism-probe"
+message: "If you use this software, please cite the accompanying note."
+type: software
+authors:
+  - family-names: Ruvalcaba
+    given-names: Cristian
+    affiliation: Saluca LLC
+  - name: "Saluca Agentic AI Research Team"
+    affiliation: Saluca LLC
+license: Apache-2.0
+repository-code: "https://github.com/saluca-labs/llm-determinism-probe"
+preferred-citation:
+  type: report
+  title: "Deterministic Function, Non-Reproducible Deployment: A Minimal Reproduction of Batch-Dependent Output Variation in a Language Model, and What It Implies for Auditability"
+  authors:
+    - family-names: Ruvalcaba
+      given-names: Cristian
+      affiliation: Saluca LLC
+    - name: "Saluca Agentic AI Research Team"
+      affiliation: Saluca LLC
+  year: 2026
+  doi: "10.5281/zenodo.22072388"
+  publisher:
+    name: Zenodo
+  notes: "DOI reserved; the deposit is pending publication at the time of writing."

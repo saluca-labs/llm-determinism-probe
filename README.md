@@ -141,6 +141,14 @@ build, the precision, the batch conditions. Almost nobody keeps them.
   shipping artifact that would fail silently if the claim in this repository were false. The
   same package carries HCTP, a hash-chain context transfer protocol, which is the record half.
 
+## Citing this
+
+The accompanying note is *Deterministic Function, Non-Reproducible Deployment: A Minimal
+Reproduction of Batch-Dependent Output Variation in a Language Model, and What It Implies for
+Auditability* (Ruvalcaba and the Saluca Agentic AI Research Team, Saluca LLC, 2026), deposited to
+Zenodo under `10.5281/zenodo.22072388`. **That DOI is reserved and the deposit is pending
+publication at the time of writing**, so it may not resolve yet. See `CITATION.cff`.
+
 ## Licence
 
 Apache License 2.0. Copyright 2026 Saluca LLC.
