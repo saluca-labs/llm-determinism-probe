@@ -79,6 +79,10 @@ measured here is floating-point reduction order and nothing else.
 
 ## Running it
 
+The requirement floors (`torch>=2.13.0`, `transformers>=5.10.0`) exclude versions with known
+advisories. The results in `results/` were recorded on torch 2.12.0+cpu, before the floors were
+raised on 2026-09-16; floating-point deltas can differ between library versions.
+
 ```bash
 pip install -r requirements.txt
 
