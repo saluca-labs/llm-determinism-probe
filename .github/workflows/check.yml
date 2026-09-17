@@ -1,0 +1,41 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # lowest-direct installs exactly the requirement floors; highest the latest.
+        resolution: [lowest-direct, highest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: "3.12"
+      - name: Requirement floors clear known advisories
+        run: python tools/check_floors.py
+      - name: Byte-compile the probes
+        run: python -m py_compile determinism_probe.py token_flip_probe.py control_probe.py
+      - name: Install CPU torch and transformers
+        run: |
+          uv venv
+          uv pip install --resolution ${{ matrix.resolution }} \
+            --index-url https://download.pytorch.org/whl/cpu \
+            --extra-index-url https://pypi.org/simple \
+            --index-strategy unsafe-best-match \
+            -r requirements.txt
+      - name: Imports resolve (no model download)
+        run: uv run --no-project python -c "import torch, transformers; from transformers import AutoModelForCausalLM, AutoTokenizer; print(torch.__version__, transformers.__version__)"
+      - name: Tier 1 probe runs
+        run: uv run --no-project python determinism_probe.py
