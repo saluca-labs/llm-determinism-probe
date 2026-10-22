@@ -16,6 +16,42 @@ themselves, plus two findings we did not find stated elsewhere: that the operati
 **alone versus not alone** rather than batch size, and that at float32 the perturbation exists
 but never reaches the output.
 
+## How it works
+
+Three standalone scripts, no shared module. Each one computes the row under test alone and inside
+a batch, then compares. Every box is a step in the named file; every arrow is the data it passes on.
+
+```mermaid
+flowchart TD
+    subgraph T1["determinism_probe.py"]
+        A1["tier 1, no model: torch.randn W 4096x4096, x 1x4096, seed 0"] --> A2["Q1: x @ W five times, torch.equal"]
+        A1 --> A3["Q2: torch.cat x with 1, 7, 31, 127 random rows, row 0 of batch @ W vs x @ W"]
+        A3 -->|"max abs delta = eps"| A4["near-tied logits + eps noise: does argmax flip?"]
+    end
+    subgraph T2["token_flip_probe.py"]
+        B1["tier 2, Qwen2.5-0.5B-Instruct on CPU: ids() applies the chat template to PROMPT and 4 FILLERS"] --> B2["fillers repeated then trimmed to length L, no padding"]
+        B2 --> B3["batch_for(bs): our row first, fillers after"]
+        B3 --> B4["Phase A: model(...).logits at final position, batch 1 vs 2, 8, 32"]
+        B3 --> B5["Phase B: model.generate greedy, first divergent token vs batch 1"]
+        B4 --> B6["report dict"]
+        B5 --> B6
+        B6 --> B7["token_flip_result.json, or the path in PROBE_OUT"]
+    end
+    subgraph C["control_probe.py"]
+        C1["bfloat16 then float32, 120 tokens: run(model, bs) builds the same trimmed batch"] --> C2["C1: batch 1 and batch 8, each run twice"]
+        C1 --> C3["C2: batch 2, 4, 8, 32 vs batch 1, and vs the previous size"]
+    end
+    A2 --> OUT["stdout"]
+    A4 --> OUT
+    B4 --> OUT
+    B5 --> OUT
+    C2 --> OUT
+    C3 --> OUT
+```
+
+The recorded stdout of each script is in [`results/`](results/); see
+[Reproduce each result](#reproduce-each-result) for which command wrote which file.
+
 ## Status
 
 Research artifact, maintained for reproducibility. The results in `results/` were recorded on
@@ -78,6 +114,21 @@ in company ... longevity of bridges.
 
 Same question. Same weights. No sampling. A different answer, because of who else was in the
 batch. The second reply also drifts from what was asked.
+
+## Reproduce each result
+
+Every number above comes from one of these runs. The recorded files are the 2026-08-23 outputs on
+torch 2.12.0+cpu and are not edited.
+
+| Result | Command | Recorded output |
+|---|---|---|
+| Tier 1 (Q1, Q2, argmax test) | `python determinism_probe.py` | [`results/RESULT-2026-08-23.txt`](results/RESULT-2026-08-23.txt) (its last line, the torch version, is not printed by the script) |
+| Tier 2 float32 logit delta and gap | `python token_flip_probe.py` (defaults: float32, 80 tokens) | [`results/token_flip_result.json`](results/token_flip_result.json) |
+| Tier 2 bfloat16, divergence at token 13 | `PROBE_DTYPE=bfloat16 PROBE_TOKENS=120 python token_flip_probe.py` | [`results/FLIP-RESULT-bf16-2026-08-23.txt`](results/FLIP-RESULT-bf16-2026-08-23.txt), [`results/token_flip_result_bf16.json`](results/token_flip_result_bf16.json) |
+| Repeatability, batch size, float32 at 120 tokens | `python control_probe.py` | [`results/CONTROL-RESULT-2026-08-23.txt`](results/CONTROL-RESULT-2026-08-23.txt) |
+
+The note that reports these results is archived under the concept DOI
+[10.5281/zenodo.22072387](https://doi.org/10.5281/zenodo.22072387).
 
 ## Why there is no padding anywhere
 
