@@ -1,0 +1,30 @@
+Captured 2026-10-22 from a clean clone of saluca-labs/llm-determinism-probe at origin/main 6e34558.
+Windows, AMD64, Python 3.12.10, torch 2.14.1+cpu, transformers 5.20.2 (installed from
+requirements.txt with uv and the PyTorch CPU index, as CI does). stdout only (stderr, which
+carries the weight-loading progress bar, was discarded).
+The Qwen/Qwen2.5-0.5B-Instruct weights were already in the local Hugging Face cache.
+
+Command:
+
+  python control_probe.py 2>/dev/null
+
+Exact stdout:
+
+=== bfloat16, 120 new tokens, greedy ===
+C1  batch 1   run twice -> identical: True
+C1  batch 8   run twice -> identical: True
+C2  batch 2   vs batch 1 -> first divergence: #60   identical to previous batch size: -
+C2  batch 4   vs batch 1 -> first divergence: #60   identical to previous batch size: True
+C2  batch 8   vs batch 1 -> first divergence: #60   identical to previous batch size: True
+C2  batch 32  vs batch 1 -> first divergence: #60   identical to previous batch size: True
+
+=== float32, 120 new tokens, greedy ===
+C1  batch 1   run twice -> identical: True
+C1  batch 8   run twice -> identical: True
+C2  batch 2   vs batch 1 -> first divergence: none   identical to previous batch size: -
+C2  batch 4   vs batch 1 -> first divergence: none   identical to previous batch size: True
+C2  batch 8   vs batch 1 -> first divergence: none   identical to previous batch size: True
+C2  batch 32  vs batch 1 -> first divergence: none   identical to previous batch size: True
+
+Rendered to PNG with rich Console(record=True).export_svg() and headless Chromium (playwright),
+font ligatures disabled so the glyphs match the characters (leading blank line trimmed).

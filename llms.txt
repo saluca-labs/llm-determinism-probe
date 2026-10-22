@@ -1,0 +1,29 @@
+# llm-determinism-probe
+
+> Minimal CPU-only reproduction that a language model is a deterministic function while the system serving it is not batch-invariant: the same request gives a different greedy output depending on what else is in the batch. Apache-2.0.
+
+This is a reproduction of a documented phenomenon (Thinking Machines Lab, "Defeating Nondeterminism in LLM Inference"), not a discovery and not a library. There is no sampling anywhere: every result is greedy argmax decoding. No GPU, no API key; Qwen/Qwen2.5-0.5B-Instruct on CPU via torch and transformers. Exact numbers depend on CPU, BLAS and library versions: the recorded bf16 run (torch 2.12.0) diverged at token 13, a 2026-10-22 re-run (torch 2.14.1) at token 60; the shape is what reproduces.
+
+## Docs
+
+- [README](https://github.com/saluca-labs/llm-determinism-probe/blob/main/README.md): the claim, results, install, quickstart, usage, limits, citation
+- [Full docs in one file](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/llms-full.txt): the README as one plain file
+
+## Code
+
+- [determinism_probe.py](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/determinism_probe.py): tier 1, a raw matmul alone versus in a batch, no model
+- [token_flip_probe.py](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/token_flip_probe.py): tier 2, logits and first divergent generated token, batch 1 versus batch K
+- [control_probe.py](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/control_probe.py): controls C1 (repeatability) and C2 (batch size versus alone), both precisions
+- [tools/check_floors.py](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/tools/check_floors.py): fails if requirements admit torch or transformers below the advisory floors
+
+## Results
+
+- [results/FLIP-RESULT-bf16-2026-08-23.txt](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/results/FLIP-RESULT-bf16-2026-08-23.txt): recorded bf16 tier 2 output
+- [results/CONTROL-RESULT-2026-08-23.txt](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/results/CONTROL-RESULT-2026-08-23.txt): recorded control output
+- [results/token_flip_result_bf16.json](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/results/token_flip_result_bf16.json): machine-readable bf16 result
+
+## Optional
+
+- [CITATION.cff](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/CITATION.cff): how to cite
+- [Companion note, concept DOI](https://doi.org/10.5281/zenodo.22072387): Deterministic Function, Non-Reproducible Deployment
+- [saluca-labs/velamen](https://github.com/saluca-labs/velamen): a shipping artifact that depends on the deterministic-function half
