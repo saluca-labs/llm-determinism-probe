@@ -16,6 +16,58 @@ themselves, plus two findings we did not find stated elsewhere: that the operati
 **alone versus not alone** rather than batch size, and that at float32 the perturbation exists
 but never reaches the output.
 
+## How it works
+
+Three standalone scripts, no shared module. Each one computes the row under test alone and inside
+a batch, then compares. Every box is a step in the named file; every arrow is the data it passes on.
+
+```mermaid
+flowchart TD
+    subgraph T1["determinism_probe.py"]
+        A1["tier 1, no model: torch.randn W 4096x4096, x 1x4096, seed 0"] --> A2["Q1: x @ W five times, torch.equal"]
+        A1 --> A3["Q2: torch.cat x with 1, 7, 31, 127 random rows, row 0 of batch @ W vs x @ W"]
+        A3 -->|"max abs delta = eps"| A4["near-tied logits + eps noise: does argmax flip?"]
+    end
+    subgraph T2["token_flip_probe.py"]
+        B1["tier 2, Qwen2.5-0.5B-Instruct on CPU: ids() applies the chat template to PROMPT and 4 FILLERS"] --> B2["fillers repeated then trimmed to length L, no padding"]
+        B2 --> B3["batch_for(bs): our row first, fillers after"]
+        B3 --> B4["Phase A: model(...).logits at final position, batch 1 vs 2, 8, 32"]
+        B3 --> B5["Phase B: model.generate greedy, first divergent token vs batch 1"]
+        B4 --> B6["report dict"]
+        B5 --> B6
+        B6 --> B7["token_flip_result.json, or the path in PROBE_OUT"]
+    end
+    subgraph C["control_probe.py"]
+        C1["bfloat16 then float32, 120 tokens: run(model, bs) builds the same trimmed batch"] --> C2["C1: batch 1 and batch 8, each run twice"]
+        C1 --> C3["C2: batch 2, 4, 8, 32 vs batch 1, and vs the previous size"]
+    end
+    A2 --> OUT["stdout"]
+    A4 --> OUT
+    B4 --> OUT
+    B5 --> OUT
+    C2 --> OUT
+    C3 --> OUT
+```
+
+The recorded stdout of each script is in [`results/`](results/); see
+[Reproduce each result](#reproduce-each-result) for which command wrote which file.
+
+## Status
+
+Research artifact, maintained for reproducibility. The results in `results/` were recorded on
+2026-08-23 and are the ones the companion note reports. CI (`.github/workflows/check.yml`) checks
+the requirement floors, byte-compiles the probes, installs the requirement floors and the latest
+releases, and runs tier 1 on every push and pull request.
+
+**Re-run 2026-10-22** from a clean clone on CPU (Windows, AMD64, Python 3.12.10, torch
+2.14.1+cpu, transformers 5.20.2, the versions `requirements.txt` resolved to that day). Tier 1
+matched the recorded numbers exactly. The float32 tier 2 matched too (logit delta 2.193e-05 on
+146,797 of 151,936 logits, gap 5.308e-01, no divergence). At bfloat16 the output again diverged
+between batch 1 and batch >1, with batch sizes 2, 4, 8 and 32 identical to each other and each
+configuration repeatable, but the first divergent token was **#60**, not #13. That is the kind of
+difference the "Expect your numbers to differ" note below describes; the shape reproduced. Those
+re-run outputs are not committed to `results/`.
+
 ## The claim, split in two
 
 These are different properties and the whole argument depends on not confusing them:
@@ -63,6 +115,21 @@ in company ... longevity of bridges.
 Same question. Same weights. No sampling. A different answer, because of who else was in the
 batch. The second reply also drifts from what was asked.
 
+## Reproduce each result
+
+Every number above comes from one of these runs. The recorded files are the 2026-08-23 outputs on
+torch 2.12.0+cpu and are not edited.
+
+| Result | Command | Recorded output |
+|---|---|---|
+| Tier 1 (Q1, Q2, argmax test) | `python determinism_probe.py` | [`results/RESULT-2026-08-23.txt`](results/RESULT-2026-08-23.txt) (its last line, the torch version, is not printed by the script) |
+| Tier 2 float32 logit delta and gap | `python token_flip_probe.py` (defaults: float32, 80 tokens) | [`results/token_flip_result.json`](results/token_flip_result.json) |
+| Tier 2 bfloat16, divergence at token 13 | `PROBE_DTYPE=bfloat16 PROBE_TOKENS=120 python token_flip_probe.py` | [`results/FLIP-RESULT-bf16-2026-08-23.txt`](results/FLIP-RESULT-bf16-2026-08-23.txt), [`results/token_flip_result_bf16.json`](results/token_flip_result_bf16.json) |
+| Repeatability, batch size, float32 at 120 tokens | `python control_probe.py` | [`results/CONTROL-RESULT-2026-08-23.txt`](results/CONTROL-RESULT-2026-08-23.txt) |
+
+The note that reports these results is archived under the concept DOI
+[10.5281/zenodo.22072387](https://doi.org/10.5281/zenodo.22072387).
+
 ## Why there is no padding anywhere
 
 This is the part that makes the result mean something.
@@ -77,11 +144,53 @@ Under a causal mask, the row under test cannot attend to any other row. Its resu
 therefore *mathematically* identical whether computed alone or in company. Every difference
 measured here is floating-point reduction order and nothing else.
 
-## Running it
+## Install
 
 The requirement floors (`torch>=2.13.0`, `transformers>=5.10.0`) exclude versions with known
 advisories. The results in `results/` were recorded on torch 2.12.0+cpu, before the floors were
 raised on 2026-09-16; floating-point deltas can differ between library versions.
+
+Tested 2026-10-22 with Python 3.12.10, installing CPU torch the way CI does (with `uv`):
+
+```bash
+git clone https://github.com/saluca-labs/llm-determinism-probe
+cd llm-determinism-probe
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python \
+  --index-url https://download.pytorch.org/whl/cpu \
+  --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match \
+  -r requirements.txt
+```
+
+(On Windows the interpreter is `.venv/Scripts/python.exe`.) With plain pip,
+`pip install -r requirements.txt` installs the default torch wheel for your platform, which may
+be a CUDA build; the probes run on CPU either way. The plain pip path was not re-tested on
+2026-10-22.
+
+## Quickstart
+
+Tier 1 needs no model download and runs in seconds:
+
+```bash
+python determinism_probe.py
+```
+
+Output from the 2026-10-22 run:
+
+```
+Q1  same input, same shape, 5 runs, bitwise identical : True
+Q2  batch of 1+1    identical: False  max|delta|: 3.052e-04  elems differing: 3941/4096
+Q2  batch of 1+7    identical: False  max|delta|: 1.984e-04  elems differing: 3852/4096
+Q2  batch of 1+31   identical: False  max|delta|: 1.984e-04  elems differing: 3852/4096
+Q2  batch of 1+127  identical: False  max|delta|: 1.984e-04  elems differing: 3852/4096
+
+perturbation applied            : 3.052e-04  (the max delta measured above)
+gap between top-1 and top-2     : 4.850e-04
+argmax flipped                  : False
+fraction of vocab within eps of top-1: 1
+```
+
+## Usage
 
 ```bash
 pip install -r requirements.txt
@@ -104,6 +213,43 @@ Captured output and machine-readable results from our run are in [`results/`](re
 change the exact magnitudes and the exact divergence point. What should reproduce is the
 *shape*: repeatable within a configuration, not repeatable across batch composition, and worse
 at lower precision.
+
+Two details of the scripts as they stand: `token_flip_probe.py` defaults to `float32` and **80**
+new tokens (the 120-token float32 figures come from `control_probe.py`), and its header line
+always prints `fp32` even when `PROBE_DTYPE=bfloat16`; the `dtype` field in the JSON it writes is
+correct. It writes `token_flip_result.json` to the current directory unless `PROBE_OUT` is set;
+the recorded copies are in `results/`.
+
+On the 2026-10-22 CPU host, with the model already cached, `token_flip_probe.py` took about 1
+minute per precision and `control_probe.py` about 3 minutes.
+
+## Architecture
+
+Three standalone scripts, no shared module:
+
+- `determinism_probe.py`: tier 1. One 1x4096 row times a 4096x4096 matrix, alone and inside
+  batches of 2 to 128 rows; then whether a perturbation of the measured size could flip an argmax.
+- `token_flip_probe.py`: tier 2. Qwen2.5-0.5B-Instruct on CPU, greedy. Phase A compares the
+  final-prompt-position logits for batch 1 against batches of 2, 8 and 32; phase B generates and
+  finds the first divergent token. Filler rows are trimmed to the exact token length of the prompt
+  under test, so there is no padding.
+- `control_probe.py`: C1 (same configuration twice is identical) and C2 (does batch size matter,
+  or only alone versus not alone), at both precisions and 120 tokens.
+- `tools/check_floors.py`: fails if `requirements.txt` admits a torch or transformers version
+  below the advisory floors. Run by CI.
+- `results/`: the 2026-08-23 captured output (`*.txt`) and machine-readable results (`*.json`).
+
+## Screenshots
+
+![Terminal output of determinism_probe.py: same-shape runs bitwise identical; a 1x4096 row computed in batches of 2 to 128 differs in about 3,850 of 4,096 elements](docs/img/determinism-probe-tier1-2026-10-22.png)
+
+![Terminal output of control_probe.py: at bfloat16 each configuration repeats exactly and batches of 2, 4, 8 and 32 all diverge from batch 1 at token 60; at float32 nothing diverges](docs/img/control-probe-2026-10-22.png)
+
+Captured 2026-10-22 from a clean clone (torch 2.14.1+cpu, transformers 5.20.2), stdout only,
+rendered with `rich` and headless Chromium; the text is exactly what the scripts printed. Commands
+and text: [`docs/img/determinism-probe-tier1-2026-10-22.txt`](docs/img/determinism-probe-tier1-2026-10-22.txt),
+[`docs/img/control-probe-2026-10-22.txt`](docs/img/control-probe-2026-10-22.txt). The recorded
+2026-08-23 runs on torch 2.12.0 diverged at token 13; see Status.
 
 ## Honest limits
 
@@ -132,7 +278,23 @@ build, the precision, the batch conditions. Almost nobody keeps them.
 
 "The model decided" is nearly always "the context differed, and nobody kept the context."
 
-## Related
+## Citation
+
+The accompanying note is *Deterministic Function, Non-Reproducible Deployment: A Minimal
+Reproduction of Batch-Dependent Output Variation in a Language Model, and What It Implies for
+Auditability* (Ruvalcaba and the Saluca Agentic AI Research Team, Saluca LLC, 2026), deposited to
+Zenodo and published under CC-BY-4.0.
+
+> Ruvalcaba, C. and the Saluca Agentic AI Research Team (2026). *Deterministic Function,
+> Non-Reproducible Deployment.* Saluca LLC. https://doi.org/10.5281/zenodo.22072387
+
+That is the **concept DOI**, which always resolves to the latest version. See `CITATION.cff`.
+
+## License
+
+Apache License 2.0. Copyright 2026 Saluca LLC.
+
+## Links
 
 - Thinking Machines Lab, *Defeating Nondeterminism in LLM Inference* - 1,000 identical requests
   to a 235B model returning 80 distinct completions; batch-invariant kernels achieving
@@ -145,18 +307,4 @@ build, the precision, the batch conditions. Almost nobody keeps them.
   shipping artifact that would fail silently if the claim in this repository were false. The
   same package carries HCTP, a hash-chain context transfer protocol, which is the record half.
 
-## Citing this
-
-The accompanying note is *Deterministic Function, Non-Reproducible Deployment: A Minimal
-Reproduction of Batch-Dependent Output Variation in a Language Model, and What It Implies for
-Auditability* (Ruvalcaba and the Saluca Agentic AI Research Team, Saluca LLC, 2026), deposited to
-Zenodo and published under CC-BY-4.0.
-
-> Ruvalcaba, C. and the Saluca Agentic AI Research Team (2026). *Deterministic Function,
-> Non-Reproducible Deployment.* Saluca LLC. https://doi.org/10.5281/zenodo.22072387
-
-That is the **concept DOI**, which always resolves to the latest version. See `CITATION.cff`.
-
-## Licence
-
-Apache License 2.0. Copyright 2026 Saluca LLC.
+_Last updated: 2026-10-22_

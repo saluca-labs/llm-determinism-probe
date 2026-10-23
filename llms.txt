@@ -1,0 +1,34 @@
+# llm-determinism-probe
+
+> Minimal CPU-only reproduction that a language model is a deterministic function while the system serving it is not batch-invariant: the same request gives a different greedy output depending on what else is in the batch. Apache-2.0.
+
+This is a reproduction of a documented phenomenon (Thinking Machines Lab, "Defeating Nondeterminism in LLM Inference"), not a discovery and not a library. There is no sampling anywhere: every result is greedy argmax decoding. No GPU, no API key; Qwen/Qwen2.5-0.5B-Instruct on CPU via torch and transformers. Exact numbers depend on CPU, BLAS and library versions: the recorded bf16 run (torch 2.12.0) diverged at token 13, a 2026-10-22 re-run (torch 2.14.1) at token 60; the shape is what reproduces.
+
+The complete public surface is below. If a script, option or environment variable is not listed here, it does not exist. There is no package, no importable module, no CLI flag parsing and no network service. Entry points: `python determinism_probe.py` (tier 1), `python token_flip_probe.py` (tier 2; reads `PROBE_DTYPE` = float32 | bfloat16, default float32; `PROBE_TOKENS`, default 80; `PROBE_PROMPT`; `PROBE_OUT`, default token_flip_result.json), `python control_probe.py` (no options), `python tools/check_floors.py` (no options).
+
+## Start here
+
+- [README](https://github.com/saluca-labs/llm-determinism-probe/blob/main/README.md): the claim, how it works (diagram), results and which command wrote each, install, quickstart, limits, citation
+- [AGENTS.md](https://github.com/saluca-labs/llm-determinism-probe/blob/main/AGENTS.md): orientation for agents, the only numbers to trust, test commands
+- [Full docs in one file](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/llms-full.txt): the README and AGENTS.md as one plain file
+
+## Code
+
+- [determinism_probe.py](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/determinism_probe.py): tier 1, a raw matmul alone versus in a batch, no model
+- [token_flip_probe.py](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/token_flip_probe.py): tier 2, logits and first divergent generated token, batch 1 versus batch K
+- [control_probe.py](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/control_probe.py): controls C1 (repeatability) and C2 (batch size versus alone), both precisions
+- [tools/check_floors.py](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/tools/check_floors.py): fails if requirements admit torch or transformers below the advisory floors
+
+## Results (recorded 2026-08-23, torch 2.12.0+cpu)
+
+- [results/RESULT-2026-08-23.txt](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/results/RESULT-2026-08-23.txt): tier 1 output, from determinism_probe.py
+- [results/token_flip_result.json](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/results/token_flip_result.json): tier 2 float32, 80 tokens, from token_flip_probe.py with defaults
+- [results/FLIP-RESULT-bf16-2026-08-23.txt](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/results/FLIP-RESULT-bf16-2026-08-23.txt): tier 2 bfloat16, 120 tokens, stdout (its header always says fp32)
+- [results/token_flip_result_bf16.json](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/results/token_flip_result_bf16.json): the same bfloat16 run, machine-readable
+- [results/CONTROL-RESULT-2026-08-23.txt](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/results/CONTROL-RESULT-2026-08-23.txt): control output, from control_probe.py
+
+## Optional
+
+- [CITATION.cff](https://raw.githubusercontent.com/saluca-labs/llm-determinism-probe/main/CITATION.cff): how to cite
+- [Companion note, concept DOI](https://doi.org/10.5281/zenodo.22072387): Deterministic Function, Non-Reproducible Deployment
+- [saluca-labs/velamen](https://github.com/saluca-labs/velamen): a shipping artifact that depends on the deterministic-function half
