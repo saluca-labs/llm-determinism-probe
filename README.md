@@ -1,3 +1,5 @@
+![llm-determinism-probe](docs/img/banner-2026-10-23.jpg)
+
 # llm-determinism-probe
 
 A minimal, CPU-only reproduction of a claim that is easy to state and easy to get wrong:
