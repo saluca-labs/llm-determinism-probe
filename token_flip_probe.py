@@ -22,6 +22,11 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+# Pinned so the probe measures the weights it was run against, not whatever main
+# holds the next time it runs. This is the sha main pointed at on 2026-10-26 and
+# the model has not changed upstream since 2024-09-25, so it is the same bytes the
+# committed results were produced from.
+REVISION = "7ae557604adf67be50417f59c2c2f167def9a775"
 import os
 DTYPE = os.environ.get("PROBE_DTYPE", "float32")
 NEW = int(os.environ.get("PROBE_TOKENS", "80"))
@@ -30,8 +35,8 @@ NEW_TOKENS = 80  # overridden by PROBE_TOKENS below
 
 torch.set_grad_enabled(False)
 
-tok = AutoTokenizer.from_pretrained(MODEL)
-model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=getattr(torch, DTYPE)).eval()
+tok = AutoTokenizer.from_pretrained(MODEL, revision=REVISION)
+model = AutoModelForCausalLM.from_pretrained(MODEL, revision=REVISION, dtype=getattr(torch, DTYPE)).eval()
 
 PROMPT = os.environ.get("PROBE_PROMPT", "Explain in plain language why a bridge needs expansion joints.")
 FILLERS = [
@@ -64,10 +69,10 @@ def batch_for(bs):
 
 
 NEW_TOKENS = NEW
-report = {"model": MODEL, "dtype": DTYPE, "device": "cpu", "decoding": "greedy",
+report = {"model": MODEL, "revision": REVISION, "dtype": DTYPE, "device": "cpu", "decoding": "greedy",
           "prompt_tokens": L, "new_tokens": NEW_TOKENS, "phase_a": {}, "phase_b": {}}
 
-print(f"model  : {MODEL}   fp32, cpu, greedy")
+print(f"model  : {MODEL} @ {REVISION[:7]}   fp32, cpu, greedy")
 print(f"prompt : {L} tokens, no padding anywhere (fillers trimmed to the same length)\n")
 
 # ---------------- Phase A: logits at the final prompt position ----------------

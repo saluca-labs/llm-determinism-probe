@@ -18,10 +18,15 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+# Pinned so the probe measures the weights it was run against, not whatever main
+# holds the next time it runs. This is the sha main pointed at on 2026-10-26 and
+# the model has not changed upstream since 2024-09-25, so it is the same bytes the
+# committed results were produced from.
+REVISION = "7ae557604adf67be50417f59c2c2f167def9a775"
 NEW_TOKENS = 120
 torch.set_grad_enabled(False)
 
-tok = AutoTokenizer.from_pretrained(MODEL)
+tok = AutoTokenizer.from_pretrained(MODEL, revision=REVISION)
 
 PROMPT = "Explain in plain language why a bridge needs expansion joints."
 FILLERS = [
@@ -58,7 +63,7 @@ def run(model, bs):
 
 for dtype in ("bfloat16", "float32"):
     print(f"\n=== {dtype}, {NEW_TOKENS} new tokens, greedy ===")
-    model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=getattr(torch, dtype)).eval()
+    model = AutoModelForCausalLM.from_pretrained(MODEL, revision=REVISION, dtype=getattr(torch, dtype)).eval()
 
     # C1 - repeatability within a configuration
     for bs in (1, 8):
